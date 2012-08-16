@@ -1,0 +1,171 @@
+#!/usr/bin/env perl
+#
+# minitrav - local mini-clone of Travis-CI worker
+#
+# USAGE:
+#
+#  minitrav TASK REPO BRANCH
+
+
+use YAML;
+use Data::Dumper;
+use File::Temp qw( tempdir );
+
+my $travis_cfg; # config parsed from .travis.yml
+
+my $task_list = {
+	clone => {
+		postrun => [ qw( read_cfg ) ],
+		code => sub {
+		my %params = @_;
+
+		if ( not $params{repo} ) {
+			die "Error: no repository specified";
+		}
+
+		my $dir = tempdir('build-XXXX', DIR => $ENV{HOME} ) 
+			or die "Error creating temp dir: $@";
+		print "# Created temporary directory '", $dir, "'\n";
+
+		my @gitcmd = ( 'git', 'clone' );
+		if ( $params{branch} ) {
+			push @gitcmd, '--branch', $params{branch};
+		}
+		push @gitcmd, $params{repo};
+		push @gitcmd, $dir;
+		system(@gitcmd) == 0 
+			or die "Error cloning repo: $?";
+		chdir($dir) || die "Error CDing to " . $dir . ": $?";
+		},
+	},
+	# NOTE: read_cfg must be run after clone to ensure it's in the right 
+	# directory.
+	read_cfg => {
+		code => sub {
+			my $yml_path = '.travis.yml';
+			open(TCFG, "$yml_path") || die "Error opening $yml_path: $!";
+
+			my $yml = join('', <TCFG>);
+			close TCFG;
+
+			$travis_cfg = Load($yml);
+		},
+	},
+	before_install => {
+		prereqs => [ qw( clone ) ],
+		code => sub {
+			my %params = @_;
+			my @commands = ();
+
+			if ($travis_cfg->{before_install}) {
+				if ( ref($travis_cfg->{before_install}) eq 'ARRAY') {
+					push @commands, @{ $travis_cfg->{before_install} };
+				} else {
+					push @commands, $travis_cfg->{before_install};
+				}
+			} else {
+				print "# Nothing to do for 'before_install'\n";
+				print Dumper($travis_cfg);
+				return;
+			}
+
+			print "# Executing commands for before_install...\n";
+			foreach my $cmd ( @commands ) {
+				print "# Executing '", $cmd, "\n";
+				system($cmd) == 0
+					or die "\tERROR: $?";
+			}
+		},
+	},
+	install => {
+		prereqs => [ qw( clone ) ],
+		code => sub {
+			my %params = @_;
+			my @commands = ();
+
+			if ($travis_cfg->{install}) {
+				if ( ref($travis_cfg->{install}) eq 'ARRAY') {
+					push @commands, @{ $travis_cfg->{install} };
+				} else {
+					push @commands, $travis_cfg->{install};
+				}
+			} else {
+				print "# Nothing to do for 'install'\n";
+				print Dumper($travis_cfg);
+				return;
+			}
+
+			print "# Executing commands for install...\n";
+			foreach my $cmd ( @commands ) {
+				print "# Executing '", $cmd, "\n";
+				system($cmd) == 0
+					or die "\tERROR: $?";
+			}
+		},
+	},
+	test => {
+		prereqs => [ qw( clone ) ],
+		code => sub {
+			my %params = @_;
+			my @commands = ();
+			if ( $travis_cfg->{test} ) {
+				if ( ref( $travis_cfg->{test}) eq 'ARRAY') {
+					push @commands, @{ $travis_cfg->{test} };
+				} else {
+					push @commands, $travis_cfg->{test};
+				}
+			} elsif ( -f 'Build.PL' ) {
+				push @commands, 'perl Build.PL && ./Build test';
+			} elsif ( -f 'Makefile.PL' ) {
+				push @commands, 'perl Makefile.PL && make test';
+			} else {
+				push @commands, 'make test';
+			}
+
+			print "# Executing commands for test...\n";
+			foreach my $cmd ( @commands ) {
+				print "# Executing '", $cmd, "\n";
+				system($cmd) == 0
+					or die "\tERROR: $?";
+			}
+		},
+	}
+};
+
+sub run_task {
+	my $task_name = shift || die "Error: run_task() not given task name";
+	my %params = @_;
+
+	my $task_entry = $task_list->{ lc($task_name) };
+
+	if ( $task_entry->{prereqs} ) {
+		foreach my $prereq ( @{ $task_entry->{prereqs} } ) {
+			print "# Running prereq '$prereq' for '$task_name'...\n";
+			run_task($prereq, %params);
+		}
+	}
+
+	if ( $task_entry->{code} ) {
+		$task_entry->{code}->(%params);
+	} else {
+		die "No CODE defined for task '$task_name'\n";
+	}
+
+	if ( $task_entry->{postrun} ) {
+		foreach my $postrun ( @{ $task_entry->{postrun} } ) {
+			print "# Running postrun '$postrun' for '$task_name'...\n";
+			run_task($postrun, %params);
+		}
+	}
+}
+
+my $task = shift @ARGV;
+my $repo = shift @ARGV;
+my $branch = shift @ARGV;
+
+my %args = ();
+$args{repo} = $repo if $repo;
+$args{branch} = $branch if $branch;
+
+run_task(lc($task), %args);
+
