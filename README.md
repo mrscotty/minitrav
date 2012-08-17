@@ -109,12 +109,14 @@ This is used to install Ubuntu packages that will be required for the
 CPAN dependencies, etc. The commands listed in the *before\_install*
 section of *.travis.yml* are run.
 
+    $ minitrav/bin/minitrav before_install mymacbook:git/openxpki feature/my-current-work
+
 ## Install
 
 This is used to install the CPAN dependencies. The commands listed in 
 the *install* section of *.travis.yml* are run.
 
-    $ minitrav install mymacbook:git/openxpki feature/my-current-work
+    $ minitrav/bin/minitrav install mymacbook:git/openxpki feature/my-current-work
 
 This should only need to be run once. In contrast to the Travis-CI worker,
 which is a fresh install *each* time, I don't usually re-install things
@@ -129,6 +131,6 @@ assumes that your project is a Perl project and looks for Build.PL and
 Makefile.PL. As in Travis-CI, it will also fall back to "make test", which 
 happens to be what OpenXPKI uses.
 
-    $ minitrav test mymacbook:git/openxpki feature/my-current-work
+    $ minitrav/bin/minitrav test mymacbook:git/openxpki feature/my-current-work
 
 
