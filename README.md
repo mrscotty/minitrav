@@ -80,7 +80,7 @@ installed here so that we can read the .travis.yml.
     $ perlbrew install perl-5.16.1
     $ perlbrew switch perl-5.16.1
     curl -L http://cpanmin.us | perl - App::cpanminus
-    cpan YAML
+    cpanm YAML
 
 ## Wrap Up
 
