@@ -60,7 +60,13 @@ This is pure convenience, but very helpful during development.
     INSERT_YOUR_SSH_PUBLIC_KEY_HERE
     EOF
 
-## Install perlbrew (you must logout and login again after this step)
+## Install minitrav
+
+    $ git clone https://github.com/mrscotty/minitrav.git
+
+## Install perlbrew
+
+Note: you must logout and login again after this step.
 
     $ curl -kL http://install.perlbrew.pl | bash
     $ echo "source ~/perl5/perlbrew/etc/bashrc" | tee -a $HOME/.profile
