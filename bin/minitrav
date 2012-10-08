@@ -130,6 +130,33 @@ my $task_list = {
 					or die "\tERROR: $?";
 			}
 		},
+	},
+	package => {
+		prereqs => [ qw( clone ) ],
+		code => sub {
+			my %params = @_;
+			my @commands = ();
+			if ( $travis_cfg->{package} ) {
+				if ( ref( $travis_cfg->{package}) eq 'ARRAY') {
+					push @commands, @{ $travis_cfg->{package} };
+				} else {
+					push @commands, $travis_cfg->{package};
+				}
+			} elsif ( -f 'Build.PL' ) {
+				push @commands, 'perl Build.PL && ./Build package';
+			} elsif ( -f 'Makefile.PL' ) {
+				push @commands, 'perl Makefile.PL && make package';
+			} else {
+				push @commands, 'make package';
+			}
+
+			print "# Executing commands for package...\n";
+			foreach my $cmd ( @commands ) {
+				print "# Executing '", $cmd, "\n";
+				system($cmd) == 0
+					or die "\tERROR: $?";
+			}
+		},
 	}
 };
 
