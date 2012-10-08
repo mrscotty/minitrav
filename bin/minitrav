@@ -131,6 +131,31 @@ my $task_list = {
 			}
 		},
 	},
+	before_package => {
+		prereqs => [ qw( clone ) ],
+		code => sub {
+			my %params = @_;
+			my @commands = ();
+			if ( $travis_cfg->{before_package} ) {
+				if ( ref( $travis_cfg->{before_package}) eq 'ARRAY') {
+					push @commands, @{ $travis_cfg->{before_package} };
+				} else {
+					push @commands, $travis_cfg->{before_package};
+				}
+			} else {
+				print "# Nothing to do for 'before_package'\n";
+				print Dumper($travis_cfg);
+				return;
+			}
+
+			print "# Executing commands for package...\n";
+			foreach my $cmd ( @commands ) {
+				print "# Executing '", $cmd, "\n";
+				system($cmd) == 0
+					or die "\tERROR: $?";
+			}
+		},
+	}
 	package => {
 		prereqs => [ qw( clone ) ],
 		code => sub {
