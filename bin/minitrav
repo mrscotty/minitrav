@@ -20,7 +20,8 @@ my $task_list = {
 		my %params = @_;
 
 		if ( not $params{repo} ) {
-			die "Error: no repository specified";
+            warn "WARNING: no repository specified -- running in current dir\n";
+            return;
 		}
 
 		my $dir = tempdir('build-XXXX', DIR => $ENV{HOME} ) 
